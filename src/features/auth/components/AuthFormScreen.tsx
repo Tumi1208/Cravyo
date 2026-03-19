@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -17,40 +18,119 @@ import { HelperFooterText } from "../../entry/components/HelperFooterText";
 import { PrimaryCtaButton } from "../../entry/components/PrimaryCtaButton";
 import { RoundedContentPanel } from "../../entry/components/RoundedContentPanel";
 import { SocialAuthRow } from "../../entry/components/SocialAuthRow";
+import { useMockAuth } from "../context/MockAuthContext";
 import type { AuthFieldConfig, AuthScreenConfig } from "../types";
+import {
+  validateAuthForm,
+  type AuthFieldErrors,
+  type AuthFieldValues,
+} from "../validation";
 import { AuthBottomNav } from "./AuthBottomNav";
 
 type AuthFormScreenProps = {
   screen: AuthScreenConfig;
 };
 
-function renderField(field: AuthFieldConfig) {
-  if (field.type === "password") {
-    return (
-      <EntryPasswordInput
-        autoCapitalize={field.autoCapitalize}
-        autoComplete={field.autoComplete}
-        key={field.id}
-        label={field.label}
-        placeholder={field.placeholder}
-      />
-    );
-  }
+function createInitialValues(fields: AuthFieldConfig[]) {
+  return fields.reduce<AuthFieldValues>((currentValues, field) => {
+    currentValues[field.id] = "";
+    return currentValues;
+  }, {});
+}
 
-  return (
-    <EntryTextInput
-      autoCapitalize={field.autoCapitalize}
-      autoComplete={field.autoComplete}
-      keyboardType={field.keyboardType}
-      key={field.id}
-      label={field.label}
-      placeholder={field.placeholder}
-    />
-  );
+function hasValidationErrors(errors: AuthFieldErrors) {
+  return Object.keys(errors).length > 0;
 }
 
 export function AuthFormScreen({ screen }: AuthFormScreenProps) {
   const router = useRouter();
+  const { clearSignUpDraft, saveSignUpDraft, signIn, signUpDraft } = useMockAuth();
+  const [fieldValues, setFieldValues] = useState(() => createInitialValues(screen.fields));
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  const updateFieldValue = (fieldId: string, nextValue: string) => {
+    const nextValues = {
+      ...fieldValues,
+      [fieldId]: nextValue,
+    };
+
+    setFieldValues(nextValues);
+
+    if (hasSubmitted || touchedFields[fieldId]) {
+      setFieldErrors(validateAuthForm(screen.formId, nextValues));
+    }
+  };
+
+  const handleFieldBlur = (fieldId: string) => {
+    setTouchedFields((currentTouchedFields) => ({
+      ...currentTouchedFields,
+      [fieldId]: true,
+    }));
+    setFieldErrors(validateAuthForm(screen.formId, fieldValues));
+  };
+
+  const handleSubmit = () => {
+    const nextErrors = validateAuthForm(screen.formId, fieldValues);
+
+    setHasSubmitted(true);
+    setFieldErrors(nextErrors);
+
+    if (hasValidationErrors(nextErrors)) {
+      return;
+    }
+
+    if (screen.formId === "sign-up") {
+      saveSignUpDraft(fieldValues);
+
+      if (screen.primaryAction.href) {
+        router.push(screen.primaryAction.href);
+      }
+
+      return;
+    }
+
+    const identifier =
+      screen.formId === "set-password"
+        ? signUpDraft?.email || signUpDraft?.mobileNumber || "mock-user@cravyo.dev"
+        : fieldValues.email?.trim() || "mock-user@cravyo.dev";
+    const fullName = signUpDraft?.fullName;
+
+    signIn({
+      identifier,
+      fullName,
+    });
+
+    clearSignUpDraft();
+
+    if (screen.primaryAction.href) {
+      router.replace(screen.primaryAction.href);
+    }
+  };
+
+  const renderField = (field: AuthFieldConfig) => {
+    const shouldShowError = hasSubmitted || touchedFields[field.id];
+    const errorMessage = shouldShowError ? fieldErrors[field.id] : undefined;
+    const sharedProps = {
+      autoCapitalize: field.autoCapitalize,
+      autoComplete: field.autoComplete,
+      key: field.id,
+      label: field.label,
+      onBlur: () => handleFieldBlur(field.id),
+      onChangeText: (nextValue: string) => updateFieldValue(field.id, nextValue),
+      placeholder: field.placeholder,
+      value: fieldValues[field.id],
+      errorMessage,
+      isInvalid: Boolean(errorMessage),
+    };
+
+    if (field.type === "password") {
+      return <EntryPasswordInput {...sharedProps} />;
+    }
+
+    return <EntryTextInput keyboardType={field.keyboardType} {...sharedProps} />;
+  };
 
   return (
     <ReferenceScreenShell backgroundColor={entryColors.brandOrange}>
@@ -62,7 +142,10 @@ export function AuthFormScreen({ screen }: AuthFormScreenProps) {
             bounces={false}
             contentContainerStyle={[
               styles.panelContent,
-              { paddingTop: screen.contentTopSpacing ?? 28 },
+              {
+                paddingTop: screen.contentTopSpacing ?? 28,
+                paddingBottom: screen.footerLink ? 72 : 44,
+              },
             ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -103,14 +186,8 @@ export function AuthFormScreen({ screen }: AuthFormScreenProps) {
             <View style={{ marginTop: screen.primaryTopSpacing ?? 24 }}>
               <PrimaryCtaButton
                 backgroundColor={entryColors.brandOrange}
-                frameColor={entryColors.brandOrangeFrame}
-                framed={screen.primaryAction.framed}
                 label={screen.primaryAction.label}
-                onPress={() => {
-                  if (screen.primaryAction.href) {
-                    router.push(screen.primaryAction.href);
-                  }
-                }}
+                onPress={handleSubmit}
                 width={screen.primaryAction.framed ? entryLayout.framedButtonWidth : 192}
               />
             </View>

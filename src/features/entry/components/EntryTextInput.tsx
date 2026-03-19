@@ -13,17 +13,21 @@ import { entryColors } from "../constants";
 type EntryTextInputProps = TextInputProps & {
   label: string;
   trailing?: ReactNode;
+  errorMessage?: string;
+  isInvalid?: boolean;
 };
 
 export function EntryTextInput({
   label,
   trailing,
+  errorMessage,
+  isInvalid = false,
   ...props
 }: EntryTextInputProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputShell}>
+      <View style={[styles.inputShell, isInvalid ? styles.inputShellInvalid : null]}>
         <TextInput
           placeholderTextColor={entryColors.textMuted}
           selectionColor={entryColors.brandOrangeStrong}
@@ -32,6 +36,7 @@ export function EntryTextInput({
         />
         {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
       </View>
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
     </View>
   );
 }
@@ -51,10 +56,15 @@ const styles = StyleSheet.create({
     minHeight: 38,
     flexDirection: "row",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
     borderRadius: 12,
     backgroundColor: entryColors.field,
     paddingLeft: 16,
     paddingRight: 12,
+  },
+  inputShellInvalid: {
+    borderColor: entryColors.iconWarm,
   },
   input: {
     flex: 1,
@@ -69,5 +79,12 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  errorText: {
+    color: entryColors.iconWarm,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
+    fontFamily: typography.fontFamily.medium,
   },
 });

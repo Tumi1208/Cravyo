@@ -7,6 +7,8 @@ import { EntryTextInput } from "./EntryTextInput";
 
 type EntryPasswordInputProps = TextInputProps & {
   label: string;
+  errorMessage?: string;
+  isInvalid?: boolean;
 };
 
 export function EntryPasswordInput({

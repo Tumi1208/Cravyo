@@ -2,6 +2,7 @@ import type { AuthScreenConfig } from "./types";
 
 export const authScreens = {
   login: {
+    formId: "login",
     title: "Log In",
     backHref: "/launch-2",
     intro: {
@@ -49,6 +50,7 @@ export const authScreens = {
     primaryTopSpacing: 54,
   },
   loginAlt: {
+    formId: "login-alt",
     title: "Hello!",
     backHref: "/launch-2",
     intro: {
@@ -94,6 +96,7 @@ export const authScreens = {
     primaryTopSpacing: 56,
   },
   signUp: {
+    formId: "sign-up",
     title: "New Account",
     backHref: "/(auth)",
     fields: [
@@ -161,6 +164,7 @@ export const authScreens = {
     primaryTopSpacing: 14,
   },
   setPassword: {
+    formId: "set-password",
     title: "Set Password",
     backHref: "/(auth)/sign-up",
     intro: {

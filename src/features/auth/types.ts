@@ -4,6 +4,7 @@ import type {
 } from "react-native";
 
 export type AuthFieldType = "text" | "password";
+export type AuthScreenFormId = "login" | "login-alt" | "sign-up" | "set-password";
 
 export interface AuthFieldConfig {
   id: string;
@@ -47,6 +48,7 @@ export interface AuthIntroConfig {
 }
 
 export interface AuthScreenConfig {
+  formId: AuthScreenFormId;
   title: string;
   backHref?: Href;
   intro?: AuthIntroConfig;

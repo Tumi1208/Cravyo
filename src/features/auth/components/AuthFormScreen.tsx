@@ -3,11 +3,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  StatusBar,
   Text,
   View,
 } from "react-native";
 
+import { ReferenceScreenShell } from "../../../components/layout/ReferenceScreenShell";
 import { typography } from "../../../theme";
 import { entryColors, entryLayout } from "../../entry/constants";
 import { AuthHeader } from "../../entry/components/AuthHeader";
@@ -53,80 +53,83 @@ export function AuthFormScreen({ screen }: AuthFormScreenProps) {
   const router = useRouter();
 
   return (
-    <View style={styles.root}>
-      <StatusBar hidden />
-      <AuthHeader backHref={screen.backHref ?? "/launch-2"} title={screen.title} />
+    <ReferenceScreenShell backgroundColor={entryColors.brandOrange}>
+      <View style={styles.root}>
+        <AuthHeader backHref={screen.backHref ?? "/launch-2"} title={screen.title} />
 
-      <RoundedContentPanel style={styles.panel} topOnly>
-        <ScrollView
-          bounces={false}
-          contentContainerStyle={[
-            styles.panelContent,
-            { paddingTop: screen.contentTopSpacing ?? 28 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {screen.intro?.title ? <Text style={styles.introTitle}>{screen.intro.title}</Text> : null}
-          {screen.intro?.description ? (
-            <Text
-              style={[
-                styles.introDescription,
-                screen.intro.title ? styles.introDescriptionWithTitle : null,
-              ]}
-            >
-              {screen.intro.description}
-            </Text>
-          ) : null}
+        <RoundedContentPanel style={styles.panel} topOnly>
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={[
+              styles.panelContent,
+              { paddingTop: screen.contentTopSpacing ?? 28 },
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {screen.intro?.title ? (
+              <Text style={styles.introTitle}>{screen.intro.title}</Text>
+            ) : null}
+            {screen.intro?.description ? (
+              <Text
+                style={[
+                  styles.introDescription,
+                  screen.intro.title ? styles.introDescriptionWithTitle : null,
+                ]}
+              >
+                {screen.intro.description}
+              </Text>
+            ) : null}
 
-          <View style={styles.fieldStack}>{screen.fields.map(renderField)}</View>
+            <View style={styles.fieldStack}>{screen.fields.map(renderField)}</View>
 
-          {screen.forgotPassword ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(screen.forgotPassword?.href ?? "/(auth)")}
-              style={styles.inlineLinkButton}
-            >
-              <Text style={styles.inlineLink}>{screen.forgotPassword.label}</Text>
-            </Pressable>
-          ) : null}
+            {screen.forgotPassword ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push(screen.forgotPassword?.href ?? "/(auth)")}
+                style={styles.inlineLinkButton}
+              >
+                <Text style={styles.inlineLink}>{screen.forgotPassword.label}</Text>
+              </Pressable>
+            ) : null}
 
-          {screen.disclaimer ? (
-            <View style={styles.disclaimerBlock}>
-              <Text style={styles.disclaimerLine}>{screen.disclaimer.lineOne}</Text>
-              <Text style={styles.disclaimerAccent}>{screen.disclaimer.lineTwo}</Text>
+            {screen.disclaimer ? (
+              <View style={styles.disclaimerBlock}>
+                <Text style={styles.disclaimerLine}>{screen.disclaimer.lineOne}</Text>
+                <Text style={styles.disclaimerAccent}>{screen.disclaimer.lineTwo}</Text>
+              </View>
+            ) : null}
+
+            <View style={{ marginTop: screen.primaryTopSpacing ?? 24 }}>
+              <PrimaryCtaButton
+                backgroundColor={entryColors.brandOrange}
+                frameColor={entryColors.brandOrangeFrame}
+                framed={screen.primaryAction.framed}
+                label={screen.primaryAction.label}
+                onPress={() => {
+                  if (screen.primaryAction.href) {
+                    router.push(screen.primaryAction.href);
+                  }
+                }}
+                width={screen.primaryAction.framed ? entryLayout.framedButtonWidth : 192}
+              />
             </View>
-          ) : null}
 
-          <View style={{ marginTop: screen.primaryTopSpacing ?? 24 }}>
-            <PrimaryCtaButton
-              backgroundColor={entryColors.brandOrange}
-              frameColor={entryColors.brandOrangeFrame}
-              framed={screen.primaryAction.framed}
-              label={screen.primaryAction.label}
-              onPress={() => {
-                if (screen.primaryAction.href) {
-                  router.push(screen.primaryAction.href);
-                }
-              }}
-              width={screen.primaryAction.framed ? entryLayout.framedButtonWidth : 192}
-            />
-          </View>
+            {screen.social ? <SocialAuthRow label={screen.social.label} /> : null}
 
-          {screen.social ? <SocialAuthRow label={screen.social.label} /> : null}
+            {screen.footerLink ? (
+              <HelperFooterText
+                actionLabel={screen.footerLink.actionLabel}
+                onPress={() => router.push(screen.footerLink?.href ?? "/(auth)")}
+                prompt={screen.footerLink.prompt}
+              />
+            ) : null}
+          </ScrollView>
+        </RoundedContentPanel>
 
-          {screen.footerLink ? (
-            <HelperFooterText
-              actionLabel={screen.footerLink.actionLabel}
-              onPress={() => router.push(screen.footerLink?.href ?? "/(auth)")}
-              prompt={screen.footerLink.prompt}
-            />
-          ) : null}
-        </ScrollView>
-      </RoundedContentPanel>
-
-      <AuthBottomNav />
-    </View>
+        <AuthBottomNav />
+      </View>
+    </ReferenceScreenShell>
   );
 }
 
@@ -137,7 +140,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     position: "absolute",
-    top: entryLayout.authHeaderHeight,
+    top: entryLayout.authHeaderContentHeight,
     right: 0,
     bottom: entryLayout.authBottomNavHeight - 4,
     left: 0,

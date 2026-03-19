@@ -1,5 +1,4 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -13,8 +12,10 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ReferenceScreenShell } from "../../../components/layout/ReferenceScreenShell";
+import { TrimmedReferenceArtwork } from "../../../components/layout/TrimmedReferenceArtwork";
 import { typography } from "../../../theme";
 import { entryColors, entryLayout } from "../constants";
 import type { OnboardingSlide } from "../types";
@@ -24,19 +25,6 @@ import { RoundedContentPanel } from "./RoundedContentPanel";
 type OnboardingPagerProps = {
   slides: OnboardingSlide[];
 };
-
-const artworkTopTrimSource = 64;
-const artworkTopTrimFallbackRatio = 0.1;
-
-function getArtworkTopTrim(imageSource: OnboardingSlide["imageSource"], width: number) {
-  const asset = Image.resolveAssetSource(imageSource);
-
-  if (!asset.width) {
-    return Math.round(width * artworkTopTrimFallbackRatio);
-  }
-
-  return Math.round((width / asset.width) * artworkTopTrimSource);
-}
 
 export function OnboardingPager({ slides }: OnboardingPagerProps) {
   const router = useRouter();
@@ -58,6 +46,10 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
   const heroHeight = Math.min(
     naturalHeroHeight,
     availableHeight - panelMinHeight - panelInset + panelOverlap,
+  );
+  const artworkHeight = Math.max(
+    heroHeight - entryLayout.onboardingTopAreaHeight,
+    0,
   );
   const panelTop = heroHeight - panelOverlap;
 
@@ -86,9 +78,7 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.container}>
-      <StatusBar backgroundColor={entryColors.brandOrange} style="dark" />
-
+    <ReferenceScreenShell backgroundColor={entryColors.brandOrange}>
       <View style={styles.content}>
         <FlatList
           data={slides}
@@ -99,22 +89,21 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
           pagingEnabled
           ref={listRef}
           renderItem={({ item }) => {
-            const artworkTopTrim = getArtworkTopTrim(item.imageSource, width);
-
             return (
               <View style={[styles.page, { width }]}>
                 <View style={[styles.heroFrame, { height: heroHeight }]}>
-                  <Image
-                    resizeMode="cover"
-                    source={item.imageSource}
+                  <View
                     style={[
-                      styles.heroImage,
-                      {
-                        width,
-                        height: heroHeight + artworkTopTrim,
-                        marginTop: -artworkTopTrim,
-                      },
+                      styles.heroTopArea,
+                      { height: entryLayout.onboardingTopAreaHeight },
                     ]}
+                  />
+                  <TrimmedReferenceArtwork
+                    backgroundColor={entryColors.brandOrange}
+                    frameHeight={artworkHeight}
+                    source={item.imageSource}
+                    topTrimSourcePx={entryLayout.onboardingArtworkTopTrimSource}
+                    width={width}
                   />
                 </View>
               </View>
@@ -182,15 +171,11 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
           </View>
         </RoundedContentPanel>
       </View>
-    </SafeAreaView>
+    </ReferenceScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: entryColors.brandOrange,
-  },
   content: {
     flex: 1,
   },
@@ -202,12 +187,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: entryColors.brandOrange,
   },
-  heroImage: {
-    width: "100%",
+  heroTopArea: {
+    backgroundColor: entryColors.brandOrange,
   },
   topOverlay: {
     position: "absolute",
-    top: 4,
+    top: 0,
     right: 0,
     left: 0,
     zIndex: 2,

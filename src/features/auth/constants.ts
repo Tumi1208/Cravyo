@@ -6,7 +6,7 @@ export const AUTH_COLORS = {
 } as const;
 
 export const AUTH_LAYOUT = {
-  headerHeight: entryLayout.authHeaderHeight,
+  headerHeight: entryLayout.authHeaderContentHeight,
   bottomNavHeight: entryLayout.authBottomNavHeight,
   horizontalPadding: entryLayout.horizontalPadding,
   panelRadius: entryLayout.panelRadius,

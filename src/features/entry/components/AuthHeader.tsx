@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { typography } from "../../../theme";
 import { entryColors, entryLayout } from "../constants";
-import { EntryStatusBar } from "./EntryStatusBar";
 
 type AuthHeaderProps = {
   title: string;
@@ -16,7 +15,6 @@ export function AuthHeader({ title, backHref }: AuthHeaderProps) {
 
   return (
     <View style={styles.container}>
-      <EntryStatusBar color={entryColors.textPrimary} />
       <View style={styles.titleRow}>
         <Pressable
           accessibilityLabel="Go back"
@@ -35,13 +33,12 @@ export function AuthHeader({ title, backHref }: AuthHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    height: entryLayout.authHeaderHeight,
-    paddingTop: 44,
+    height: entryLayout.authHeaderContentHeight,
+    paddingTop: 28,
     paddingHorizontal: entryLayout.horizontalPadding,
     backgroundColor: entryColors.brandOrange,
   },
   titleRow: {
-    marginTop: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

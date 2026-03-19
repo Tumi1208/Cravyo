@@ -16,7 +16,7 @@ export const entryColors = {
 } as const;
 
 export const entryLayout = {
-  authHeaderHeight: 184,
+  authHeaderContentHeight: 140,
   authBottomNavHeight: 82,
   horizontalPadding: 28,
   panelRadius: 34,
@@ -24,5 +24,7 @@ export const entryLayout = {
   launchBrandWidth: 218,
   launchBrandHeight: 236,
   launchButtonWidth: 172,
+  onboardingTopAreaHeight: 28,
+  onboardingArtworkTopTrimSource: 92,
   onboardingPanelHeight: 286,
 } as const;

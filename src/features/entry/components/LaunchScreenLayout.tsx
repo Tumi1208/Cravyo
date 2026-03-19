@@ -1,11 +1,10 @@
 import type { Href } from "expo-router";
-import { StatusBar } from "react-native";
 import { Image, StyleSheet, Text, View } from "react-native";
 
+import { ReferenceScreenShell } from "../../../components/layout/ReferenceScreenShell";
 import { typography } from "../../../theme";
 import { entryColors, entryLayout } from "../constants";
 import type { LaunchScreenConfig } from "../types";
-import { EntryStatusBar } from "./EntryStatusBar";
 import { PrimaryCtaButton } from "./PrimaryCtaButton";
 
 type LaunchScreenLayoutProps = {
@@ -18,12 +17,12 @@ export function LaunchScreenLayout({
   onPressAction,
 }: LaunchScreenLayoutProps) {
   return (
-    <View style={[styles.container, { backgroundColor: screen.backgroundColor }]}>
-      <StatusBar hidden />
-      <View style={styles.statusBarWrap}>
-        <EntryStatusBar color={entryColors.textPrimary} />
-      </View>
-
+    <ReferenceScreenShell
+      backgroundColor={screen.backgroundColor}
+      statusBarStyle={
+        screen.backgroundColor === entryColors.brandGreen ? "light" : "dark"
+      }
+    >
       <View style={styles.content}>
         <Image source={screen.brandSource} style={styles.brand} resizeMode="contain" />
 
@@ -44,18 +43,11 @@ export function LaunchScreenLayout({
           </View>
         ) : null}
       </View>
-    </View>
+    </ReferenceScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  statusBarWrap: {
-    paddingTop: 44,
-    paddingHorizontal: 30,
-  },
   content: {
     flex: 1,
     alignItems: "center",

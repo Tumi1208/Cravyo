@@ -1,5 +1,9 @@
 import { Stack } from "expo-router";
 
 export default function ProfileLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="logout" options={{ animation: "fade", presentation: "transparentModal" }} />
+    </Stack>
+  );
 }

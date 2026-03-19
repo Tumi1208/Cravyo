@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { colors, radius, spacing, typography } from "../../theme";
 
@@ -10,22 +10,50 @@ export type CategoryTab = {
 export type CategoryTabsProps = {
   items: CategoryTab[];
   activeKey: string;
+  onChange?: (key: string) => void;
+  scrollable?: boolean;
 };
 
-export function CategoryTabs({ items, activeKey }: CategoryTabsProps) {
-  return (
-    <View style={styles.container}>
-      {items.map((item) => {
-        const isActive = item.key === activeKey;
+function renderTabs(
+  items: CategoryTab[],
+  activeKey: string,
+  onChange?: (key: string) => void,
+) {
+  return items.map((item) => {
+    const isActive = item.key === activeKey;
 
-        return (
-          <Pressable key={item.key} accessibilityRole="button" style={[styles.tab, isActive ? styles.activeTab : null]}>
-            <Text style={[styles.label, isActive ? styles.activeLabel : null]}>{item.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+    return (
+      <Pressable
+        accessibilityRole="button"
+        key={item.key}
+        onPress={() => onChange?.(item.key)}
+        style={[styles.tab, isActive ? styles.activeTab : null]}
+      >
+        <Text style={[styles.label, isActive ? styles.activeLabel : null]}>{item.label}</Text>
+      </Pressable>
+    );
+  });
+}
+
+export function CategoryTabs({
+  items,
+  activeKey,
+  onChange,
+  scrollable = false,
+}: CategoryTabsProps) {
+  if (scrollable) {
+    return (
+      <ScrollView
+        horizontal
+        contentContainerStyle={styles.scrollContent}
+        showsHorizontalScrollIndicator={false}
+      >
+        {renderTabs(items, activeKey, onChange)}
+      </ScrollView>
+    );
+  }
+
+  return <View style={styles.container}>{renderTabs(items, activeKey, onChange)}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -33,6 +61,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+  },
+  scrollContent: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingRight: spacing.xs,
   },
   tab: {
     paddingHorizontal: spacing.md,

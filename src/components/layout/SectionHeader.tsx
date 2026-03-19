@@ -6,9 +6,15 @@ export type SectionHeaderProps = {
   title: string;
   caption?: string;
   actionLabel?: string;
+  onPressAction?: () => void;
 };
 
-export function SectionHeader({ title, caption, actionLabel }: SectionHeaderProps) {
+export function SectionHeader({
+  title,
+  caption,
+  actionLabel,
+  onPressAction,
+}: SectionHeaderProps) {
   return (
     <View style={styles.container}>
       <View style={styles.copy}>
@@ -16,7 +22,7 @@ export function SectionHeader({ title, caption, actionLabel }: SectionHeaderProp
         {caption ? <Text style={styles.caption}>{caption}</Text> : null}
       </View>
       {actionLabel ? (
-        <Pressable accessibilityRole="button">
+        <Pressable accessibilityRole="button" onPress={onPressAction}>
           <Text style={styles.action}>{actionLabel}</Text>
         </Pressable>
       ) : null}

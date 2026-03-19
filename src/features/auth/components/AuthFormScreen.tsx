@@ -112,10 +112,10 @@ export function AuthFormScreen({ screen }: AuthFormScreenProps) {
   const renderField = (field: AuthFieldConfig) => {
     const shouldShowError = hasSubmitted || touchedFields[field.id];
     const errorMessage = shouldShowError ? fieldErrors[field.id] : undefined;
+    const fieldKey = field.id;
     const sharedProps = {
       autoCapitalize: field.autoCapitalize,
       autoComplete: field.autoComplete,
-      key: field.id,
       label: field.label,
       onBlur: () => handleFieldBlur(field.id),
       onChangeText: (nextValue: string) => updateFieldValue(field.id, nextValue),
@@ -126,10 +126,16 @@ export function AuthFormScreen({ screen }: AuthFormScreenProps) {
     };
 
     if (field.type === "password") {
-      return <EntryPasswordInput {...sharedProps} />;
+      return <EntryPasswordInput key={fieldKey} {...sharedProps} />;
     }
 
-    return <EntryTextInput keyboardType={field.keyboardType} {...sharedProps} />;
+    return (
+      <EntryTextInput
+        key={fieldKey}
+        keyboardType={field.keyboardType}
+        {...sharedProps}
+      />
+    );
   };
 
   return (

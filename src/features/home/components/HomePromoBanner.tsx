@@ -2,6 +2,8 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { HomePromoBanner as HomePromoBannerData } from "../types";
 
+const PROMO_BANNER_HEIGHT = 118;
+
 type HomePromoBannerProps = {
   banner: HomePromoBannerData;
   onPress: () => void;
@@ -44,7 +46,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 26,
     backgroundColor: "#EF5A22",
-    minHeight: 118,
+    height: PROMO_BANNER_HEIGHT,
   },
   copyBlock: {
     width: "44%",
@@ -69,7 +71,7 @@ const styles = StyleSheet.create({
   },
   image: {
     flex: 1,
-    minHeight: 118,
+    height: "100%",
   },
   ring: {
     position: "absolute",

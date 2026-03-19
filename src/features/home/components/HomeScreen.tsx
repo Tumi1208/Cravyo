@@ -40,6 +40,7 @@ export function HomeScreen() {
   const recommendCardWidth = Math.floor(
     (width - SCREEN_HORIZONTAL_PADDING * 2 - RECOMMEND_GAP) / 2,
   );
+  const promoBannerWidth = width - SCREEN_HORIZONTAL_PADDING * 2;
 
   const openRoute = (href: Href) => {
     router.push(href);
@@ -114,8 +115,9 @@ export function HomeScreen() {
           </View>
 
           <HomePromoBanner
-            banner={homeMock.promoBanner}
-            onPress={() => openRoute(homeMock.promoBanner.href)}
+            banners={homeMock.promoBanners}
+            onPressBanner={openRoute}
+            width={promoBannerWidth}
           />
 
           <Text style={[styles.sectionTitle, styles.recommendTitle]}>Recommend</Text>

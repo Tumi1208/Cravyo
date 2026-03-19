@@ -18,11 +18,10 @@ export interface HomeCategory {
 }
 
 export interface HomePromoBanner {
+  id: string;
   description: string;
-  dotCount: number;
-  activeDotIndex: number;
   href: Href;
-  imageKey: BannerImageKey;
+  imageKey: BannerImageKey | FoodImageKey;
   imageSource: ImageSourcePropType;
   title: string;
 }
@@ -45,7 +44,7 @@ export interface HomeScreenMock {
     subtitle: string;
   };
   bestSeller: HomeProductItem[];
-  promoBanner: HomePromoBanner;
+  promoBanners: HomePromoBanner[];
   recommend: HomeProductItem[];
   searchPlaceholder: string;
 }

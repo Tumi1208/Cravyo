@@ -1,35 +1,97 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import {
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 
 import type { HomePromoBanner as HomePromoBannerData } from "../types";
 
 const PROMO_BANNER_HEIGHT = 118;
 
 type HomePromoBannerProps = {
-  banner: HomePromoBannerData;
-  onPress: () => void;
+  banners: HomePromoBannerData[];
+  onPressBanner: (href: HomePromoBannerData["href"]) => void;
+  width: number;
 };
 
-export function HomePromoBanner({ banner, onPress }: HomePromoBannerProps) {
+export function HomePromoBanner({
+  banners,
+  onPressBanner,
+  width,
+}: HomePromoBannerProps) {
+  const carouselRef = useRef<FlatList<HomePromoBannerData>>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const handleMomentumScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+
+    setActiveIndex(nextIndex);
+  };
+
+  const handlePressDot = (index: number) => {
+    carouselRef.current?.scrollToIndex({ index, animated: true });
+    setActiveIndex(index);
+  };
+
   return (
     <View style={styles.container}>
-      <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
-        <View style={[styles.ring, styles.topRing]} />
-        <View style={[styles.ring, styles.bottomRing]} />
+      <FlatList
+        bounces={false}
+        data={banners}
+        decelerationRate="fast"
+        getItemLayout={(_, index) => ({
+          index,
+          length: width,
+          offset: width * index,
+        })}
+        horizontal
+        keyExtractor={(item) => item.id}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        pagingEnabled
+        ref={carouselRef}
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityLabel={item.title}
+            accessibilityRole="button"
+            onPress={() => onPressBanner(item.href)}
+            style={[styles.card, { width }]}
+          >
+            <View style={[styles.ring, styles.topRing]} />
+            <View style={[styles.ring, styles.bottomRing]} />
 
-        <View style={styles.copyBlock}>
-          <Text style={styles.description}>{banner.description}</Text>
-          <Text style={styles.title}>{banner.title}</Text>
-        </View>
+            <View style={styles.copyBlock}>
+              <Text style={styles.description}>{item.description}</Text>
+              <Text style={styles.title}>{item.title}</Text>
+            </View>
 
-        <Image resizeMode="cover" source={banner.imageSource} style={styles.image} />
-      </Pressable>
+            <Image resizeMode="cover" source={item.imageSource} style={styles.image} />
+          </Pressable>
+        )}
+        scrollEnabled={banners.length > 1}
+        showsHorizontalScrollIndicator={false}
+      />
 
       <View style={styles.dots}>
-        {Array.from({ length: banner.dotCount }).map((_, index) => (
-          <View
+        {banners.map((banner, index) => (
+          <Pressable
+            accessibilityLabel={`Show promo banner ${index + 1}`}
+            accessibilityRole="button"
+            hitSlop={6}
             key={`promo-dot-${index}`}
-            style={[styles.dot, index === banner.activeDotIndex ? styles.activeDot : null]}
-          />
+            onPress={() => handlePressDot(index)}
+          >
+            <View
+              style={[styles.dot, index === activeIndex ? styles.activeDot : null]}
+            />
+          </Pressable>
         ))}
       </View>
     </View>

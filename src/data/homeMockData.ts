@@ -14,15 +14,32 @@ export const homeMockData: HomeScreenMock = {
     { id: "dessert", imageKey: "dessert", iconName: "ice-cream", label: "Dessert" },
     { id: "drinks", imageKey: "drinks", iconName: "cup-outline", label: "Drinks" },
   ],
-  promoBanner: {
-    description: "Experience our\ndelicious new dish",
-    title: "30% OFF",
-    imageKey: "promo-pizza",
-    imageSource: getHomeImageSource("promo-pizza"),
-    dotCount: 3,
-    activeDotIndex: 1,
-    href: "/(tabs)/menu",
-  },
+  promoBanners: [
+    {
+      id: "promo-pizza",
+      description: "Experience our\ndelicious new dish",
+      title: "30% OFF",
+      imageKey: "promo-pizza",
+      imageSource: getHomeImageSource("promo-pizza"),
+      href: "/(tabs)/menu",
+    },
+    {
+      id: "promo-sushi",
+      description: "Fresh sushi made\nfor lunch time",
+      title: "HOT DEAL",
+      imageKey: "sushi-1",
+      imageSource: getHomeImageSource("sushi-1"),
+      href: "/(tabs)/menu",
+    },
+    {
+      id: "promo-burger",
+      description: "Try our burger\nwith extra sauce",
+      title: "NEW MENU",
+      imageKey: "burger-1",
+      imageSource: getHomeImageSource("burger-1"),
+      href: "/(tabs)/menu",
+    },
+  ],
   bestSeller: [
     {
       id: "best-seller-1",

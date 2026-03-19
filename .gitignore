@@ -1,0 +1,24 @@
+node_modules/
+.expo/
+dist/
+web-build/
+coverage/
+
+.idea/
+.vscode/
+.DS_Store
+
+android/app/build/
+ios/build/
+
+.env
+.env.*
+!.env.example
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+design/assets/
+# Large design files
+design/overview/*.pdf

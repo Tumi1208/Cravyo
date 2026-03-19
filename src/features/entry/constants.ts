@@ -1,0 +1,28 @@
+export const entryColors = {
+  brandOrange: "#F5B26D",
+  brandOrangeStrong: "#F1A95E",
+  brandOrangeFrame: "#F0BE89",
+  brandGreen: "#37724A",
+  brandGreenStrong: "#2F6542",
+  panel: "#FFFFFF",
+  surfaceSoft: "#FBF0E3",
+  field: "#F7EBDD",
+  textPrimary: "#303640",
+  textSecondary: "#6E6C6A",
+  textMuted: "#CFC6BC",
+  textInverse: "#FFFFFF",
+  iconWarm: "#F36B46",
+  dotInactive: "#E8DED3",
+} as const;
+
+export const entryLayout = {
+  authHeaderHeight: 184,
+  authBottomNavHeight: 82,
+  horizontalPadding: 28,
+  panelRadius: 34,
+  framedButtonWidth: 168,
+  launchBrandWidth: 218,
+  launchBrandHeight: 236,
+  launchButtonWidth: 172,
+  onboardingPanelHeight: 286,
+} as const;

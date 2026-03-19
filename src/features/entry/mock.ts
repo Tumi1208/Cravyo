@@ -36,6 +36,9 @@ export const onboardingSlides: OnboardingSlide[] = [
     description:
       "Choose your favorite meals and get them delivered fresh, fast, and right to your door anytime.",
     buttonLabel: "Next",
+    imageScale: 1.16,
+    imageTranslateX: 12,
+    imageTranslateY: -132,
     showSkip: true,
   },
   {
@@ -46,6 +49,9 @@ export const onboardingSlides: OnboardingSlide[] = [
     description:
       "Pay quickly and securely with simple checkout options designed to make every order smooth.",
     buttonLabel: "Next",
+    imageScale: 1.12,
+    imageTranslateX: -6,
+    imageTranslateY: -106,
     showSkip: true,
   },
   {
@@ -56,5 +62,8 @@ export const onboardingSlides: OnboardingSlide[] = [
     description:
       "Track your order in real time and enjoy quick delivery from nearby restaurants you love.",
     buttonLabel: "Get Started",
+    imageScale: 1.15,
+    imageTranslateX: 4,
+    imageTranslateY: -72,
   },
 ];

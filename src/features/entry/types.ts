@@ -22,6 +22,9 @@ export interface OnboardingSlide {
   title: string;
   description: string;
   buttonLabel: string;
+  imageScale?: number;
+  imageTranslateX?: number;
+  imageTranslateY?: number;
   showSkip?: boolean;
 }
 

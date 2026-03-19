@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -34,24 +33,21 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const currentSlide = slides[currentIndex];
-  const heroAsset = Image.resolveAssetSource(slides[0]?.imageSource);
-  const naturalHeroHeight =
-    heroAsset.width > 0
-      ? Math.round(width * (heroAsset.height / heroAsset.width))
-      : Math.round(width * 1.3);
-  const availableHeight = height - insets.top;
-  const panelMinHeight = entryLayout.onboardingPanelHeight;
-  const panelInset = 10;
-  const panelOverlap = 22;
-  const heroHeight = Math.min(
-    naturalHeroHeight,
-    availableHeight - panelMinHeight - panelInset + panelOverlap,
-  );
-  const artworkHeight = Math.max(
-    heroHeight - entryLayout.onboardingTopAreaHeight,
+  const contentHeight = height - insets.top;
+  const heroTopGap = 8;
+  const panelOverlap = 30;
+  const panelBottomInset = Math.max(insets.bottom + 20, 28);
+  const minHeroHeight = 230;
+  const desiredPanelHeight = Math.round(contentHeight * 0.56);
+  const maxPanelHeight = Math.max(
+    contentHeight - panelBottomInset - minHeroHeight + panelOverlap,
     0,
   );
-  const panelTop = heroHeight - panelOverlap;
+  const panelHeight = Math.min(Math.max(desiredPanelHeight, 340), maxPanelHeight);
+  const heroHeight = contentHeight - panelBottomInset - panelHeight + panelOverlap;
+  const artworkHeight = Math.max(heroHeight - heroTopGap, 0);
+  const skipTop = heroTopGap + 10;
+  const panelContentBottomPadding = panelBottomInset + 12;
 
   const handleFinish = () => {
     router.replace("/(auth)/sign-up");
@@ -90,22 +86,64 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
           ref={listRef}
           renderItem={({ item }) => {
             return (
-              <View style={[styles.page, { width }]}>
+              <View style={[styles.page, { width, height: contentHeight }]}>
                 <View style={[styles.heroFrame, { height: heroHeight }]}>
-                  <View
-                    style={[
-                      styles.heroTopArea,
-                      { height: entryLayout.onboardingTopAreaHeight },
-                    ]}
-                  />
+                  <View style={[styles.heroTopArea, { height: heroTopGap }]} />
                   <TrimmedReferenceArtwork
                     backgroundColor={entryColors.brandOrange}
                     frameHeight={artworkHeight}
                     source={item.imageSource}
-                    topTrimSourcePx={entryLayout.onboardingArtworkTopTrimSource}
+                    imageScale={item.imageScale}
+                    imageTranslateX={item.imageTranslateX}
+                    imageTranslateY={item.imageTranslateY}
                     width={width}
                   />
                 </View>
+
+                <RoundedContentPanel
+                  style={[
+                    styles.panel,
+                    {
+                      marginTop: -panelOverlap,
+                    },
+                  ]}
+                  topOnly
+                >
+                  <View
+                    style={[
+                      styles.panelContent,
+                      { paddingBottom: panelContentBottomPadding },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      color={entryColors.brandOrangeStrong}
+                      name={item.iconName as never}
+                      size={32}
+                    />
+
+                    <Text style={styles.title}>{item.title}</Text>
+                    <Text style={styles.description}>{item.description}</Text>
+
+                    <View style={styles.dots}>
+                      {slides.map((slide, index) => (
+                        <View
+                          key={slide.id}
+                          style={[
+                            styles.dot,
+                            index === currentIndex ? styles.dotActive : null,
+                          ]}
+                        />
+                      ))}
+                    </View>
+
+                    <PrimaryCtaButton
+                      label={item.buttonLabel}
+                      onPress={handleNext}
+                      style={styles.button}
+                      width={item.id === slides[slides.length - 1]?.id ? 150 : 122}
+                    />
+                  </View>
+                </RoundedContentPanel>
               </View>
             );
           }}
@@ -113,7 +151,10 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
         />
 
         {currentSlide.showSkip ? (
-          <View pointerEvents="box-none" style={styles.topOverlay}>
+          <View
+            pointerEvents="box-none"
+            style={[styles.topOverlay, { top: skipTop }]}
+          >
             <Pressable
               accessibilityLabel="Skip onboarding"
               accessibilityRole="button"
@@ -131,45 +172,6 @@ export function OnboardingPager({ slides }: OnboardingPagerProps) {
           </View>
         ) : null}
 
-        <RoundedContentPanel
-          style={[
-            styles.panel,
-            {
-              top: panelTop,
-              bottom: panelInset,
-            },
-          ]}
-        >
-          <View style={styles.panelContent}>
-            <MaterialCommunityIcons
-              color={entryColors.brandOrangeStrong}
-              name={currentSlide.iconName as never}
-              size={32}
-            />
-
-            <Text style={styles.title}>{currentSlide.title}</Text>
-            <Text style={styles.description}>{currentSlide.description}</Text>
-
-            <View style={styles.dots}>
-              {slides.map((slide, index) => (
-                <View
-                  key={slide.id}
-                  style={[
-                    styles.dot,
-                    index === currentIndex ? styles.dotActive : null,
-                  ]}
-                />
-              ))}
-            </View>
-
-            <PrimaryCtaButton
-              label={currentSlide.buttonLabel}
-              onPress={handleNext}
-              style={styles.button}
-              width={currentIndex === slides.length - 1 ? 150 : 122}
-            />
-          </View>
-        </RoundedContentPanel>
       </View>
     </ReferenceScreenShell>
   );
@@ -192,7 +194,6 @@ const styles = StyleSheet.create({
   },
   topOverlay: {
     position: "absolute",
-    top: 0,
     right: 0,
     left: 0,
     zIndex: 2,
@@ -205,43 +206,41 @@ const styles = StyleSheet.create({
     gap: 2,
     minHeight: 44,
     paddingHorizontal: 12,
-    marginRight: 12,
+    marginRight: 10,
   },
   panel: {
-    position: "absolute",
-    right: 10,
-    left: 10,
+    flex: 1,
     backgroundColor: entryColors.panel,
     zIndex: 1,
   },
   panelContent: {
     alignItems: "center",
-    paddingHorizontal: 28,
-    paddingTop: 18,
+    paddingHorizontal: entryLayout.horizontalPadding,
+    paddingTop: 28,
     paddingBottom: 24,
   },
   skipLabel: {
     color: entryColors.brandOrangeStrong,
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: "700",
     fontFamily: typography.fontFamily.bold,
   },
   title: {
-    marginTop: 12,
+    marginTop: 16,
     color: entryColors.brandOrangeStrong,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 21,
+    lineHeight: 28,
     fontWeight: "700",
     fontFamily: typography.fontFamily.bold,
     textAlign: "center",
   },
   description: {
-    maxWidth: 264,
-    marginTop: 12,
+    maxWidth: 276,
+    marginTop: 14,
     color: entryColors.textPrimary,
     fontSize: 14,
-    lineHeight: 19,
+    lineHeight: 20,
     fontWeight: "600",
     fontFamily: typography.fontFamily.semibold,
     textAlign: "center",
@@ -251,7 +250,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginTop: 20,
+    marginTop: 18,
   },
   dot: {
     width: 18,
@@ -263,6 +262,6 @@ const styles = StyleSheet.create({
     backgroundColor: entryColors.brandOrangeStrong,
   },
   button: {
-    marginTop: 20,
+    marginTop: 24,
   },
 });

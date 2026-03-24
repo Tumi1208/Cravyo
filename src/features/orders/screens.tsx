@@ -29,7 +29,6 @@ export function MyOrdersScreen() {
     <CravyoSheetScreen activeNavKey="orders" backHref="/(tabs)" title="My Orders">
       <CravyoPillTabs
         activeKey={activeTab}
-        fill={false}
         items={orderStatusTabs.map((tab) => ({ key: tab.id, label: tab.label }))}
         onChange={(key) => setActiveTab(key as OrderStatusTabKey)}
         size="small"
@@ -130,7 +129,7 @@ function OrderStatusText({ order }: { order: OrderListItem }) {
 
 const styles = StyleSheet.create({
   tabs: {
-    alignSelf: "flex-start",
+    width: "100%",
     marginBottom: 18,
   },
   list: {

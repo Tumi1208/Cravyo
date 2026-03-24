@@ -1,14 +1,17 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
 import {
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   View,
+  type ImageSourcePropType,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -26,17 +29,83 @@ import {
   profileUser,
   settingsItems,
 } from "./mock";
+import {
+  addStoredPaymentMethod,
+  createMaskedCardLabel,
+  defaultProfileImageKey,
+  loadNotificationSettingValues,
+  loadStoredPaymentMethods,
+  loadStoredProfileDetails,
+  saveNotificationSettingValues,
+  saveStoredPaymentMethods,
+  saveStoredProfileDetails,
+} from "./storage";
 import type {
   DeliveryAddress,
-  NotificationSetting,
+  NotificationSettingValues,
   PaymentMethod,
   ProfileField,
+  ProfileFormValues,
+  ProfileImageKey,
   ProfileMenuItem,
   SettingsItem,
 } from "./types";
 
 function showProfileNotice(title: string, message: string) {
   Alert.alert(title, message);
+}
+
+const defaultNotificationValues = notificationSettings.reduce<NotificationSettingValues>(
+  (result, item) => {
+    result[item.id] = item.enabled;
+    return result;
+  },
+  {},
+);
+
+const defaultPaymentMethodId =
+  paymentMethods.find((item) => item.isSelected)?.id ?? paymentMethods[0]?.id ?? "";
+
+const profileImageSources: Record<Exclude<ProfileImageKey, "default">, ImageSourcePropType> = {
+  pizza: require("../../../assets/images/foods/pizza-1.jpg"),
+  burger: require("../../../assets/images/foods/burger-1.jpg"),
+};
+
+function createProfileFieldDefaults(session?: {
+  fullName?: string;
+  identifier?: string;
+} | null) {
+  const defaults = profileFields.reduce<ProfileFormValues>((result, field) => {
+    result[field.id] = field.value;
+    return result;
+  }, {});
+
+  if (session?.fullName) {
+    defaults["full-name"] = session.fullName;
+  }
+
+  if (session?.identifier) {
+    defaults.email = session.identifier;
+  }
+
+  return defaults;
+}
+
+function formatCardPreviewNumber(cardNumber: string) {
+  const digits = cardNumber.replace(/\D/g, "").slice(0, 16);
+  const groupedDigits = digits.match(/.{1,4}/g)?.join(" ") ?? "";
+
+  return groupedDigits || "0000 0000 0000 0000";
+}
+
+function formatExpiryDateInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
 export function ProfileMenuScreen() {
@@ -116,12 +185,30 @@ export function ProfileMenuScreen() {
 
 export function MyProfileScreen() {
   const { session } = useMockAuth();
-  const [fields, setFields] = useState<Record<string, string>>({
-    "full-name": session?.fullName || profileFields[0]?.value || "",
-    "date-of-birth": profileFields[1]?.value || "",
-    email: session?.identifier || profileFields[2]?.value || "",
-    "phone-number": profileFields[3]?.value || "",
-  });
+  const isFocused = useIsFocused();
+  const [fields, setFields] = useState<ProfileFormValues>(() => createProfileFieldDefaults(session));
+  const [imageKey, setImageKey] = useState<ProfileImageKey>(defaultProfileImageKey);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    let isMounted = true;
+
+    void loadStoredProfileDetails(createProfileFieldDefaults(session)).then((storedProfile) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setFields(storedProfile.fields);
+      setImageKey(storedProfile.imageKey);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFocused, session?.fullName, session?.identifier]);
 
   const updateField = (fieldId: string, value: string) => {
     setFields((current) => ({
@@ -129,14 +216,33 @@ export function MyProfileScreen() {
       [fieldId]: value,
     }));
   };
-  const handleUpdateProfile = () => {
+
+  const handleSelectProfileImage = () => {
+    Alert.alert("Profile Photo", "Select a mock photo to save locally.", [
+      {
+        text: "Pizza",
+        onPress: () => setImageKey("pizza"),
+      },
+      {
+        text: "Burger",
+        onPress: () => setImageKey("burger"),
+      },
+      {
+        text: "Default",
+        onPress: () => setImageKey(defaultProfileImageKey),
+      },
+    ]);
+  };
+
+  const handleUpdateProfile = async () => {
+    await saveStoredProfileDetails(fields, imageKey);
     showProfileNotice("Profile Updated", "Your profile details were saved locally in this prototype.");
   };
 
   return (
     <CravyoSheetScreen backHref="/profile" title="My Profile">
       <View style={styles.profileAvatarSection}>
-        <ProfileAvatarCard />
+        <ProfileAvatarCard imageKey={imageKey} onPress={handleSelectProfileImage} />
       </View>
 
       {profileFields.map((field) => (
@@ -195,32 +301,63 @@ export function DeliveryAddressScreen() {
 }
 
 export function PaymentMethodsScreen() {
-  const [selectedId, setSelectedId] = useState(
-    paymentMethods.find((item) => item.isSelected)?.id ?? paymentMethods[0]?.id ?? "",
-  );
+  const router = useRouter();
+  const isFocused = useIsFocused();
+  const [selectedId, setSelectedId] = useState(defaultPaymentMethodId);
+  const [methods, setMethods] = useState<PaymentMethod[]>(paymentMethods);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    let isMounted = true;
+
+    void loadStoredPaymentMethods().then((storedPaymentMethods) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setMethods(storedPaymentMethods.methods);
+      setSelectedId(storedPaymentMethods.selectedId);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFocused]);
+
+  const handleSelectPaymentMethod = (paymentMethodId: string) => {
+    setSelectedId(paymentMethodId);
+    setMethods((current) => {
+      const nextMethods = current.map((item) => ({
+        ...item,
+        isSelected: item.id === paymentMethodId,
+      }));
+
+      void saveStoredPaymentMethods(nextMethods, paymentMethodId);
+
+      return nextMethods;
+    });
+  };
 
   return (
     <CravyoSheetScreen backHref="/profile" title="Payment Methods">
       <View style={styles.selectionList}>
-        {paymentMethods.map((item, index) => (
+        {methods.map((item, index) => (
           <PaymentRow
-            isLast={index === paymentMethods.length - 1}
+            isLast={index === methods.length - 1}
             isSelected={item.id === selectedId}
             item={item}
             key={item.id}
-            onPress={() => setSelectedId(item.id)}
+            onPress={() => handleSelectPaymentMethod(item.id)}
           />
         ))}
       </View>
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          showProfileNotice(
-            "Add New Card",
-            "Adding a new payment method is not available in this prototype yet.",
-          )
-        }
+        onPress={() => router.push("/profile/add-card")}
         style={styles.textOnlyButton}
       >
         <Text style={styles.textOnlyButtonLabel}>Add New Card</Text>
@@ -261,15 +398,40 @@ export function SettingsScreen() {
 }
 
 export function NotificationSettingScreen() {
-  const [values, setValues] = useState<Record<string, boolean>>(
-    Object.fromEntries(notificationSettings.map((item) => [item.id, item.enabled])),
-  );
+  const isFocused = useIsFocused();
+  const [values, setValues] = useState<NotificationSettingValues>(defaultNotificationValues);
 
-  const toggleValue = (item: NotificationSetting) => {
-    setValues((current) => ({
-      ...current,
-      [item.id]: !current[item.id],
-    }));
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    let isMounted = true;
+
+    void loadNotificationSettingValues().then((storedValues) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setValues(storedValues);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFocused]);
+
+  const toggleValue = (settingId: string, nextValue: boolean) => {
+    setValues((current) => {
+      const nextValues = {
+        ...current,
+        [settingId]: nextValue,
+      };
+
+      void saveNotificationSettingValues(nextValues);
+
+      return nextValues;
+    });
   };
 
   return (
@@ -280,7 +442,7 @@ export function NotificationSettingScreen() {
             <Text style={styles.toggleLabel}>{item.label}</Text>
             <Switch
               ios_backgroundColor="#F6E2D2"
-              onValueChange={() => toggleValue(item)}
+              onValueChange={(nextValue) => toggleValue(item.id, nextValue)}
               thumbColor="#FFFFFF"
               trackColor={{ false: "#F6E2D2", true: "#F3B477" }}
               value={values[item.id] ?? false}
@@ -293,9 +455,9 @@ export function NotificationSettingScreen() {
 }
 
 export function PasswordSettingScreen() {
-  const [currentPassword, setCurrentPassword] = useState("password1234");
-  const [newPassword, setNewPassword] = useState("cravyo2026");
-  const [confirmPassword, setConfirmPassword] = useState("cravyo2026");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [visibility, setVisibility] = useState({
     current: false,
     next: false,
@@ -312,6 +474,9 @@ export function PasswordSettingScreen() {
       return;
     }
 
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
     showProfileNotice("Password Changed", "Your password was updated locally in this prototype.");
   };
 
@@ -374,6 +539,99 @@ export function PasswordSettingScreen() {
         onPress={handleChangePassword}
         style={styles.formButton}
       />
+    </CravyoSheetScreen>
+  );
+}
+
+export function AddCardScreen() {
+  const router = useRouter();
+  const [cardHolderName, setCardHolderName] = useState(profileUser.fullName);
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [cvv, setCvv] = useState("");
+
+  const handleClose = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/profile/payment-methods");
+  };
+
+  const handleSaveCard = async () => {
+    if (!cardHolderName.trim() || !cardNumber.trim() || !expiryDate.trim() || !cvv.trim()) {
+      showProfileNotice("Missing Information", "Complete all card fields before saving.");
+      return;
+    }
+
+    const nextPaymentMethod: PaymentMethod = {
+      id: `card-${Date.now()}`,
+      label: createMaskedCardLabel(cardNumber),
+      iconName: "credit-card-outline",
+      isSelected: true,
+    };
+
+    await addStoredPaymentMethod(nextPaymentMethod);
+
+    Alert.alert("Card Saved", "Your new card was saved locally in this prototype.", [
+      {
+        text: "OK",
+        onPress: handleClose,
+      },
+    ]);
+  };
+
+  return (
+    <CravyoSheetScreen backHref="/profile/payment-methods" title="Add Card">
+      <CardPreview
+        cardHolderName={cardHolderName}
+        cardNumber={cardNumber}
+        expiryDate={expiryDate}
+      />
+
+      <LabeledTextField
+        autoCapitalize="words"
+        label="Card holder name"
+        onChangeText={setCardHolderName}
+        placeholder="John Smith"
+        value={cardHolderName}
+      />
+
+      <LabeledTextField
+        autoCapitalize="none"
+        keyboardType="number-pad"
+        label="Card Number"
+        onChangeText={(value) =>
+          setCardNumber(value.replace(/[^\d ]/g, "").slice(0, 19))
+        }
+        placeholder="0000 0000 0000 0000"
+        value={cardNumber}
+      />
+
+      <View style={styles.inlineFieldRow}>
+        <LabeledTextField
+          autoCapitalize="none"
+          containerStyle={styles.inlineField}
+          keyboardType="number-pad"
+          label="Expiry Date"
+          onChangeText={(value) => setExpiryDate(formatExpiryDateInput(value))}
+          placeholder="04/28"
+          value={expiryDate}
+        />
+
+        <LabeledTextField
+          autoCapitalize="none"
+          containerStyle={styles.inlineField}
+          keyboardType="number-pad"
+          label="CVV"
+          onChangeText={(value) => setCvv(value.replace(/\D/g, "").slice(0, 4))}
+          placeholder="0000"
+          value={cvv}
+        />
+      </View>
+
+      <PrimaryPillButton label="Save Card" onPress={handleSaveCard} style={styles.formButton} />
     </CravyoSheetScreen>
   );
 }
@@ -461,20 +719,28 @@ function AvatarBadge({ size }: { size: number }) {
   );
 }
 
-function ProfileAvatarCard() {
+function ProfileAvatarCard({
+  imageKey,
+  onPress,
+}: {
+  imageKey: ProfileImageKey;
+  onPress: () => void;
+}) {
+  const imageSource = imageKey === "default" ? null : profileImageSources[imageKey];
+
   return (
     <View style={styles.profileAvatarCard}>
-      <MaterialCommunityIcons color="#FFFFFF" name="account" size={58} />
+      {imageSource ? (
+        <Image resizeMode="cover" source={imageSource} style={styles.profileAvatarImage} />
+      ) : (
+        <MaterialCommunityIcons color="#FFFFFF" name="account" size={58} />
+      )}
+
       <Pressable
         accessibilityLabel="Change profile photo"
         accessibilityRole="button"
         hitSlop={8}
-        onPress={() =>
-          showProfileNotice(
-            "Profile Photo",
-            "Profile photo upload is waiting on the final exported asset workflow.",
-          )
-        }
+        onPress={onPress}
         style={styles.profileAvatarAction}
       >
         <MaterialCommunityIcons color="#FFFFFF" name="camera-outline" size={14} />
@@ -493,16 +759,82 @@ function ProfileTextField({
   value: string;
 }) {
   return (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{field.label}</Text>
+    <LabeledTextField
+      autoCapitalize={field.id === "full-name" ? "words" : "none"}
+      keyboardType={field.keyboardType}
+      label={field.label}
+      onChangeText={onChangeText}
+      value={value}
+    />
+  );
+}
+
+function LabeledTextField({
+  autoCapitalize,
+  containerStyle,
+  keyboardType,
+  label,
+  onChangeText,
+  placeholder,
+  value,
+}: {
+  autoCapitalize?: "characters" | "none" | "sentences" | "words";
+  containerStyle?: StyleProp<ViewStyle>;
+  keyboardType?: "default" | "email-address" | "number-pad" | "phone-pad";
+  label: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  value: string;
+}) {
+  return (
+    <View style={[styles.fieldGroup, containerStyle]}>
+      <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
-        keyboardType={field.keyboardType ?? "default"}
+        autoCapitalize={autoCapitalize ?? "none"}
+        autoCorrect={false}
+        keyboardType={keyboardType ?? "default"}
         onChangeText={onChangeText}
-        placeholder={field.label}
+        placeholder={placeholder ?? label}
         placeholderTextColor="#B89C8A"
         style={styles.fieldInput}
         value={value}
       />
+    </View>
+  );
+}
+
+function CardPreview({
+  cardHolderName,
+  cardNumber,
+  expiryDate,
+}: {
+  cardHolderName: string;
+  cardNumber: string;
+  expiryDate: string;
+}) {
+  return (
+    <View style={styles.cardPreview}>
+      <View style={styles.cardPreviewAccent} />
+      <View style={styles.cardPreviewTopRow}>
+        <View style={styles.cardPreviewChip} />
+        <View style={styles.cardPreviewMark} />
+      </View>
+
+      <Text style={styles.cardPreviewNumber}>{formatCardPreviewNumber(cardNumber)}</Text>
+
+      <View style={styles.cardPreviewDetails}>
+        <View>
+          <Text style={styles.cardPreviewCaption}>Card Holder Name</Text>
+          <Text numberOfLines={1} style={styles.cardPreviewValue}>
+            {cardHolderName.trim() || profileUser.fullName}
+          </Text>
+        </View>
+
+        <View>
+          <Text style={styles.cardPreviewCaption}>Expiry Date</Text>
+          <Text style={styles.cardPreviewValue}>{expiryDate.trim() || "04/28"}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -525,6 +857,8 @@ function PasswordField({
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={styles.passwordShell}>
         <TextInput
+          autoCapitalize="none"
+          autoCorrect={false}
           onChangeText={onChangeText}
           placeholder={label}
           placeholderTextColor="#B89C8A"
@@ -775,6 +1109,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 34,
     backgroundColor: "#D48B52",
+    overflow: "hidden",
+  },
+  profileAvatarImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
   profileAvatarAction: {
     position: "absolute",
@@ -792,6 +1132,13 @@ const styles = StyleSheet.create({
   fieldGroup: {
     marginBottom: 18,
   },
+  inlineFieldRow: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  inlineField: {
+    flex: 1,
+  },
   fieldLabel: {
     marginBottom: 10,
     color: "#2C2422",
@@ -808,6 +1155,73 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 20,
     fontWeight: "500",
+  },
+  cardPreview: {
+    marginBottom: 30,
+    borderRadius: 28,
+    backgroundColor: "#3F8158",
+    overflow: "hidden",
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
+  cardPreviewAccent: {
+    position: "absolute",
+    top: -42,
+    left: -28,
+    width: 210,
+    height: 120,
+    borderRadius: 40,
+    backgroundColor: "#F2B37A",
+    transform: [{ rotate: "-18deg" }],
+  },
+  cardPreviewTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardPreviewChip: {
+    width: 34,
+    height: 24,
+    borderRadius: 7,
+    backgroundColor: "#F5C78A",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  cardPreviewMark: {
+    width: 46,
+    height: 16,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: "#F8EBDD",
+  },
+  cardPreviewNumber: {
+    marginTop: 40,
+    color: "#FFF9F2",
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  cardPreviewDetails: {
+    marginTop: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 20,
+  },
+  cardPreviewCaption: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "500",
+    textTransform: "uppercase",
+  },
+  cardPreviewValue: {
+    marginTop: 4,
+    color: "#FFF9F2",
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "700",
   },
   passwordShell: {
     flexDirection: "row",

@@ -27,6 +27,10 @@ export interface ProfileField {
   value: string;
 }
 
+export type ProfileFormValues = Record<string, string>;
+export type NotificationSettingValues = Record<string, boolean>;
+export type ProfileImageKey = "default" | "pizza" | "burger";
+
 export interface DeliveryAddress {
   iconName: ProfileIconName;
   id: string;
@@ -53,4 +57,20 @@ export interface NotificationSetting {
   enabled: boolean;
   id: string;
   label: string;
+}
+
+export interface StoredPaymentMethods {
+  methods: PaymentMethod[];
+  selectedId: string;
+}
+
+export interface StoredProfileDetails {
+  fields: ProfileFormValues;
+  imageKey: ProfileImageKey;
+}
+
+export interface ProfileStorageState {
+  notifications: NotificationSettingValues;
+  paymentMethods: StoredPaymentMethods;
+  profile: StoredProfileDetails;
 }

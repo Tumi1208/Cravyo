@@ -33,12 +33,14 @@ import {
   addStoredPaymentMethod,
   createMaskedCardLabel,
   defaultProfileImageKey,
+  getCachedStoredProfileDetails,
   loadNotificationSettingValues,
   loadStoredPaymentMethods,
-  loadStoredProfileDetails,
   saveNotificationSettingValues,
   saveStoredPaymentMethods,
   saveStoredProfileDetails,
+  subscribeToStoredProfileDetails,
+  syncStoredProfileDetails,
 } from "./storage";
 import type {
   DeliveryAddress,
@@ -71,21 +73,18 @@ const profileImageSources: Record<Exclude<ProfileImageKey, "default">, ImageSour
   burger: require("../../../assets/images/foods/burger-1.jpg"),
 };
 
-function createProfileFieldDefaults(session?: {
-  fullName?: string;
-  identifier?: string;
-} | null) {
+function createProfileFieldDefaults(fullName?: string, email?: string) {
   const defaults = profileFields.reduce<ProfileFormValues>((result, field) => {
     result[field.id] = field.value;
     return result;
   }, {});
 
-  if (session?.fullName) {
-    defaults["full-name"] = session.fullName;
+  if (fullName) {
+    defaults["full-name"] = fullName;
   }
 
-  if (session?.identifier) {
-    defaults.email = session.identifier;
+  if (email) {
+    defaults.email = email;
   }
 
   return defaults;
@@ -108,12 +107,59 @@ function formatExpiryDateInput(value: string) {
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
+function useSharedProfileDetails(session?: {
+  fullName?: string;
+  identifier?: string;
+} | null) {
+  const isFocused = useIsFocused();
+  const defaultFullName = session?.fullName?.trim() || profileUser.fullName;
+  const defaultEmail = session?.identifier?.trim() || profileUser.email;
+  const [profileDetails, setProfileDetails] = useState(() =>
+    getCachedStoredProfileDetails(createProfileFieldDefaults(defaultFullName, defaultEmail)),
+  );
+
+  useEffect(() => {
+    const defaultFields = createProfileFieldDefaults(defaultFullName, defaultEmail);
+
+    setProfileDetails(getCachedStoredProfileDetails(defaultFields));
+
+    const unsubscribe = subscribeToStoredProfileDetails(() => {
+      setProfileDetails(getCachedStoredProfileDetails(defaultFields));
+    });
+
+    return unsubscribe;
+  }, [defaultEmail, defaultFullName]);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    let isMounted = true;
+    const defaultFields = createProfileFieldDefaults(defaultFullName, defaultEmail);
+
+    void syncStoredProfileDetails(defaultFields).then((nextProfileDetails) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setProfileDetails(nextProfileDetails);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [defaultEmail, defaultFullName, isFocused]);
+
+  return profileDetails;
+}
+
 export function ProfileMenuScreen() {
   const router = useRouter();
   const { session } = useMockAuth();
-
-  const fullName = session?.fullName || profileUser.fullName;
-  const email = session?.identifier || profileUser.email;
+  const profileDetails = useSharedProfileDetails(session);
+  const fullName = profileDetails.fields["full-name"] ?? "";
+  const email = profileDetails.fields.email ?? "";
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -141,7 +187,7 @@ export function ProfileMenuScreen() {
 
         <View style={styles.menuCard}>
           <View style={styles.menuHeader}>
-            <AvatarBadge size={44} />
+            <AvatarBadge imageKey={profileDetails.imageKey} size={44} />
 
             <View style={styles.menuHeaderCopy}>
               <Text style={styles.menuName}>{fullName}</Text>
@@ -186,29 +232,18 @@ export function ProfileMenuScreen() {
 export function MyProfileScreen() {
   const { session } = useMockAuth();
   const isFocused = useIsFocused();
-  const [fields, setFields] = useState<ProfileFormValues>(() => createProfileFieldDefaults(session));
-  const [imageKey, setImageKey] = useState<ProfileImageKey>(defaultProfileImageKey);
+  const profileDetails = useSharedProfileDetails(session);
+  const [fields, setFields] = useState<ProfileFormValues>(() => profileDetails.fields);
+  const [imageKey, setImageKey] = useState<ProfileImageKey>(profileDetails.imageKey);
 
   useEffect(() => {
     if (!isFocused) {
       return;
     }
 
-    let isMounted = true;
-
-    void loadStoredProfileDetails(createProfileFieldDefaults(session)).then((storedProfile) => {
-      if (!isMounted) {
-        return;
-      }
-
-      setFields(storedProfile.fields);
-      setImageKey(storedProfile.imageKey);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isFocused, session?.fullName, session?.identifier]);
+    setFields(profileDetails.fields);
+    setImageKey(profileDetails.imageKey);
+  }, [isFocused, profileDetails]);
 
   const updateField = (fieldId: string, value: string) => {
     setFields((current) => ({
@@ -545,10 +580,17 @@ export function PasswordSettingScreen() {
 
 export function AddCardScreen() {
   const router = useRouter();
-  const [cardHolderName, setCardHolderName] = useState(profileUser.fullName);
+  const { session } = useMockAuth();
+  const profileDetails = useSharedProfileDetails(session);
+  const defaultCardHolderName = profileDetails.fields["full-name"] ?? "";
+  const [cardHolderName, setCardHolderName] = useState(defaultCardHolderName);
   const [cardNumber, setCardNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
+
+  useEffect(() => {
+    setCardHolderName((current) => (current.trim() ? current : defaultCardHolderName));
+  }, [defaultCardHolderName]);
 
   const handleClose = () => {
     if (router.canGoBack()) {
@@ -588,6 +630,7 @@ export function AddCardScreen() {
         cardHolderName={cardHolderName}
         cardNumber={cardNumber}
         expiryDate={expiryDate}
+        fallbackCardHolderName={defaultCardHolderName}
       />
 
       <LabeledTextField
@@ -698,7 +741,15 @@ function MenuRow({
   );
 }
 
-function AvatarBadge({ size }: { size: number }) {
+function AvatarBadge({
+  imageKey,
+  size,
+}: {
+  imageKey: ProfileImageKey;
+  size: number;
+}) {
+  const imageSource = imageKey === "default" ? null : profileImageSources[imageKey];
+
   return (
     <View
       style={[
@@ -710,11 +761,15 @@ function AvatarBadge({ size }: { size: number }) {
         },
       ]}
     >
-      {/*
-        TODO: Replace this placeholder with the exported CRAVYO profile avatar
-        artwork once the design asset pack includes the final portrait images.
-      */}
-      <MaterialCommunityIcons color="#FFFFFF" name="account" size={size * 0.55} />
+      {imageSource ? (
+        <Image resizeMode="cover" source={imageSource} style={styles.avatarBadgeImage} />
+      ) : (
+        /*
+          TODO: Replace this placeholder with the exported CRAVYO profile avatar
+          artwork once the design asset pack includes the final portrait images.
+        */
+        <MaterialCommunityIcons color="#FFFFFF" name="account" size={size * 0.55} />
+      )}
     </View>
   );
 }
@@ -807,10 +862,12 @@ function CardPreview({
   cardHolderName,
   cardNumber,
   expiryDate,
+  fallbackCardHolderName,
 }: {
   cardHolderName: string;
   cardNumber: string;
   expiryDate: string;
+  fallbackCardHolderName: string;
 }) {
   return (
     <View style={styles.cardPreview}>
@@ -826,7 +883,7 @@ function CardPreview({
         <View>
           <Text style={styles.cardPreviewCaption}>Card Holder Name</Text>
           <Text numberOfLines={1} style={styles.cardPreviewValue}>
-            {cardHolderName.trim() || profileUser.fullName}
+            {cardHolderName.trim() || fallbackCardHolderName}
           </Text>
         </View>
 
@@ -1043,6 +1100,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#E4813E",
+    overflow: "hidden",
+  },
+  avatarBadgeImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
   menuHeaderCopy: {
     flex: 1,

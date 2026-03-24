@@ -8,10 +8,13 @@ import type {
   ProfileFormValues,
   ProfileImageKey,
   ProfileStorageState,
+  StoredProfileDetails,
   StoredPaymentMethods,
 } from "./types";
 
 export const defaultProfileImageKey: ProfileImageKey = "default";
+
+type ProfileDetailsListener = () => void;
 
 const defaultProfileFieldValues = profileFields.reduce<ProfileFormValues>((result, field) => {
   result[field.id] = field.value;
@@ -28,6 +31,9 @@ const defaultNotificationValues = notificationSettings.reduce<NotificationSettin
 
 const defaultSelectedPaymentMethodId =
   paymentMethods.find((item) => item.isSelected)?.id ?? paymentMethods[0]?.id ?? "";
+
+let cachedStoredProfile = createDefaultProfileStorageState().profile;
+const profileDetailsListeners = new Set<ProfileDetailsListener>();
 
 function normalizePaymentMethods(methods: PaymentMethod[], selectedId: string) {
   return methods.map((item) => ({
@@ -51,6 +57,32 @@ function createDefaultProfileStorageState(): ProfileStorageState {
       fields: {},
       imageKey: defaultProfileImageKey,
     },
+  };
+}
+
+function notifyProfileDetailsListeners() {
+  profileDetailsListeners.forEach((listener) => listener());
+}
+
+function setCachedStoredProfile(profile: ProfileStorageState["profile"]) {
+  cachedStoredProfile = {
+    fields: { ...profile.fields },
+    imageKey: resolveProfileImageKey(profile.imageKey),
+  };
+
+  notifyProfileDetailsListeners();
+}
+
+function resolveStoredProfileDetails(
+  profile: Partial<ProfileStorageState["profile"]> | undefined,
+  defaultFields?: ProfileFormValues,
+): StoredProfileDetails {
+  return {
+    fields: {
+      ...(defaultFields ?? defaultProfileFieldValues),
+      ...(profile?.fields ?? {}),
+    },
+    imageKey: resolveProfileImageKey(profile?.imageKey),
   };
 }
 
@@ -92,7 +124,7 @@ async function readProfileStorageState() {
 
     const parsed = JSON.parse(rawValue) as Partial<ProfileStorageState>;
 
-    return {
+    const nextState = {
       notifications: {
         ...defaultNotificationValues,
         ...(parsed.notifications ?? {}),
@@ -103,6 +135,13 @@ async function readProfileStorageState() {
         imageKey: resolveProfileImageKey(parsed.profile?.imageKey),
       },
     } satisfies ProfileStorageState;
+
+    cachedStoredProfile = {
+      fields: { ...nextState.profile.fields },
+      imageKey: nextState.profile.imageKey,
+    };
+
+    return nextState;
   } catch {
     return createDefaultProfileStorageState();
   }
@@ -166,14 +205,7 @@ export async function addStoredPaymentMethod(method: PaymentMethod) {
 
 export async function loadStoredProfileDetails(defaultFields?: ProfileFormValues) {
   const state = await readProfileStorageState();
-
-  return {
-    fields: {
-      ...(defaultFields ?? defaultProfileFieldValues),
-      ...state.profile.fields,
-    },
-    imageKey: state.profile.imageKey,
-  };
+  return resolveStoredProfileDetails(state.profile, defaultFields);
 }
 
 export async function saveStoredProfileDetails(
@@ -181,17 +213,41 @@ export async function saveStoredProfileDetails(
   imageKey: ProfileImageKey,
 ) {
   const currentState = await readProfileStorageState();
+  const nextStoredProfile: ProfileStorageState["profile"] = {
+    fields: {
+      ...defaultProfileFieldValues,
+      ...fields,
+    },
+    imageKey: resolveProfileImageKey(imageKey),
+  };
+
+  setCachedStoredProfile(nextStoredProfile);
 
   await writeProfileStorageState({
     ...currentState,
-    profile: {
-      fields: {
-        ...defaultProfileFieldValues,
-        ...fields,
-      },
-      imageKey,
-    },
+    profile: nextStoredProfile,
   });
+}
+
+export function getCachedStoredProfileDetails(defaultFields?: ProfileFormValues) {
+  return resolveStoredProfileDetails(cachedStoredProfile, defaultFields);
+}
+
+export function subscribeToStoredProfileDetails(listener: ProfileDetailsListener) {
+  profileDetailsListeners.add(listener);
+
+  return () => {
+    profileDetailsListeners.delete(listener);
+  };
+}
+
+export async function syncStoredProfileDetails(defaultFields?: ProfileFormValues) {
+  const state = await readProfileStorageState();
+  const nextProfileDetails = resolveStoredProfileDetails(state.profile, defaultFields);
+
+  setCachedStoredProfile(state.profile);
+
+  return nextProfileDetails;
 }
 
 export function createMaskedCardLabel(cardNumber: string) {

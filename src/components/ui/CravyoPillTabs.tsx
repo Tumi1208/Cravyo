@@ -42,6 +42,8 @@ export function CravyoPillTabs({
             ]}
           >
             <Text
+              minimumFontScale={0.85}
+              numberOfLines={1}
               style={[
                 styles.label,
                 isCompact ? styles.compactLabel : null,
@@ -64,6 +66,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   item: {
+    minWidth: 0,
+    flexShrink: 1,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 32,
@@ -88,6 +92,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 18,
     fontWeight: "500",
+    textAlign: "center",
   },
   compactLabel: {
     fontSize: 13,

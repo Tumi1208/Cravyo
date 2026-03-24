@@ -2,12 +2,15 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 
 import { CravyoBottomNav } from "../../components/navigation/CravyoBottomNav";
@@ -32,12 +35,24 @@ import type {
   SettingsItem,
 } from "./types";
 
+function showProfileNotice(title: string, message: string) {
+  Alert.alert(title, message);
+}
+
 export function ProfileMenuScreen() {
   const router = useRouter();
   const { session } = useMockAuth();
 
   const fullName = session?.fullName || profileUser.fullName;
   const email = session?.identifier || profileUser.email;
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/(tabs)");
+  };
 
   return (
     <ReferenceScreenShell backgroundColor="#F9A45F">
@@ -49,7 +64,7 @@ export function ProfileMenuScreen() {
           accessibilityLabel="Go back"
           accessibilityRole="button"
           hitSlop={10}
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={styles.menuBackButton}
         >
           <Feather color="#D2783B" name="chevron-left" size={20} />
@@ -114,9 +129,12 @@ export function MyProfileScreen() {
       [fieldId]: value,
     }));
   };
+  const handleUpdateProfile = () => {
+    showProfileNotice("Profile Updated", "Your profile details were saved locally in this prototype.");
+  };
 
   return (
-    <CravyoSheetScreen backHref="/profile" title="My profile">
+    <CravyoSheetScreen backHref="/profile" title="My Profile">
       <View style={styles.profileAvatarSection}>
         <ProfileAvatarCard />
       </View>
@@ -130,7 +148,11 @@ export function MyProfileScreen() {
         />
       ))}
 
-      <PrimaryPillButton label="Update Profile" style={styles.formButton} />
+      <PrimaryPillButton
+        label="Update Profile"
+        onPress={handleUpdateProfile}
+        style={styles.formButton}
+      />
     </CravyoSheetScreen>
   );
 }
@@ -156,7 +178,16 @@ export function DeliveryAddressScreen() {
         ))}
       </View>
 
-      <Pressable accessibilityRole="button" style={styles.textOnlyButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          showProfileNotice(
+            "Add New Address",
+            "Adding a new delivery address is not available in this prototype yet.",
+          )
+        }
+        style={styles.textOnlyButton}
+      >
         <Text style={styles.textOnlyButtonLabel}>Add New Address</Text>
       </Pressable>
     </CravyoSheetScreen>
@@ -182,7 +213,16 @@ export function PaymentMethodsScreen() {
         ))}
       </View>
 
-      <Pressable accessibilityRole="button" style={styles.textOnlyButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          showProfileNotice(
+            "Add New Card",
+            "Adding a new payment method is not available in this prototype yet.",
+          )
+        }
+        style={styles.textOnlyButton}
+      >
         <Text style={styles.textOnlyButtonLabel}>Add New Card</Text>
       </Pressable>
     </CravyoSheetScreen>
@@ -203,7 +243,15 @@ export function SettingsScreen() {
               isLast={index === settingsItems.length - 1}
               item={item}
               key={item.id}
-              onPress={href ? () => router.push(href) : undefined}
+              onPress={
+                href
+                  ? () => router.push(href)
+                  : () =>
+                      showProfileNotice(
+                        "Delete Account",
+                        "Account deletion is not available in this prototype yet.",
+                      )
+              }
             />
           );
         })}
@@ -253,6 +301,19 @@ export function PasswordSettingScreen() {
     next: false,
     confirm: false,
   });
+  const handleChangePassword = () => {
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      showProfileNotice("Missing Information", "Complete all password fields before saving.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showProfileNotice("Passwords Do Not Match", "Enter the same new password twice.");
+      return;
+    }
+
+    showProfileNotice("Password Changed", "Your password was updated locally in this prototype.");
+  };
 
   return (
     <CravyoSheetScreen backHref="/profile/settings" title="Password Setting">
@@ -269,7 +330,16 @@ export function PasswordSettingScreen() {
         }
       />
 
-      <Pressable accessibilityRole="button" style={styles.forgotPasswordButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          showProfileNotice(
+            "Forgot Password",
+            "Use the password recovery flow from the login screen to reset your password.",
+          )
+        }
+        style={styles.forgotPasswordButton}
+      >
         <Text style={styles.forgotPasswordLabel}>Forgot Password?</Text>
       </Pressable>
 
@@ -299,7 +369,11 @@ export function PasswordSettingScreen() {
         }
       />
 
-      <PrimaryPillButton label="Change Password" style={styles.formButton} />
+      <PrimaryPillButton
+        label="Change Password"
+        onPress={handleChangePassword}
+        style={styles.formButton}
+      />
     </CravyoSheetScreen>
   );
 }
@@ -391,9 +465,20 @@ function ProfileAvatarCard() {
   return (
     <View style={styles.profileAvatarCard}>
       <MaterialCommunityIcons color="#FFFFFF" name="account" size={58} />
-      <View style={styles.profileAvatarAction}>
+      <Pressable
+        accessibilityLabel="Change profile photo"
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={() =>
+          showProfileNotice(
+            "Profile Photo",
+            "Profile photo upload is waiting on the final exported asset workflow.",
+          )
+        }
+        style={styles.profileAvatarAction}
+      >
         <MaterialCommunityIcons color="#FFFFFF" name="camera-outline" size={14} />
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -536,7 +621,6 @@ function SettingsRow({
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={!onPress}
       onPress={onPress}
       style={[styles.selectionRow, !isLast ? styles.selectionDivider : null]}
     >
@@ -544,7 +628,7 @@ function SettingsRow({
         <MaterialCommunityIcons color="#E97B35" name={item.iconName} size={28} />
         <Text style={styles.selectionTitle}>{item.label}</Text>
       </View>
-      <Feather color="#DF8E57" name="chevron-down" size={18} />
+      <Feather color="#DF8E57" name="chevron-right" size={18} />
     </Pressable>
   );
 }
@@ -559,13 +643,15 @@ function RadioIndicator({ selected }: { selected: boolean }) {
 
 function PrimaryPillButton({
   label,
+  onPress,
   style,
 }: {
   label: string;
-  style?: object;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <Pressable accessibilityRole="button" style={[styles.primaryPillButton, style]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.primaryPillButton, style]}>
       <Text style={styles.primaryPillLabel}>{label}</Text>
     </Pressable>
   );

@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -38,6 +39,10 @@ const faqsByCategory: Record<HelpCategoryKey, FaqEntry[]> = {
   account: accountFaqs,
   services: serviceFaqs,
 };
+
+function showSupportNotice(title: string, message: string) {
+  Alert.alert(title, message);
+}
 
 export function HelpScreen() {
   const router = useRouter();
@@ -129,7 +134,11 @@ export function ContactUsScreen() {
                   />
                   <Text style={styles.contactLabel}>{method.label}</Text>
                 </View>
-                <Feather color="#D98B57" name="chevron-down" size={18} />
+                <Feather
+                  color="#D98B57"
+                  name={expanded ? "chevron-up" : "chevron-down"}
+                  size={18}
+                />
               </View>
 
               {expanded ? (
@@ -144,6 +153,26 @@ export function ContactUsScreen() {
 }
 
 export function SupportChatScreen() {
+  const [selectedChoiceId, setSelectedChoiceId] = useState(supportChoices[0]?.id ?? "");
+  const [message, setMessage] = useState("");
+  const handleSend = () => {
+    const trimmedMessage = message.trim();
+    const selectedChoice = supportChoices.find((choice) => choice.id === selectedChoiceId);
+
+    if (!trimmedMessage && !selectedChoice) {
+      showSupportNotice("Support", "Choose a support topic or enter a message first.");
+      return;
+    }
+
+    showSupportNotice(
+      "Message Sent",
+      trimmedMessage
+        ? `Your message was queued locally for ${selectedChoice?.label ?? "support"}.`
+        : `${selectedChoice?.label ?? "Support"} was selected for follow-up.`,
+    );
+    setMessage("");
+  };
+
   return (
     <CravyoSheetScreen activeNavKey="support" backHref="/support" title="Support">
       <View style={styles.supportGreetingBadge}>
@@ -162,9 +191,20 @@ export function SupportChatScreen() {
           <Pressable
             accessibilityRole="button"
             key={choice.id}
-            style={styles.supportChoice}
+            onPress={() => setSelectedChoiceId(choice.id)}
+            style={[
+              styles.supportChoice,
+              choice.id === selectedChoiceId ? styles.supportChoiceActive : null,
+            ]}
           >
-            <Text style={styles.supportChoiceLabel}>{choice.label}</Text>
+            <Text
+              style={[
+                styles.supportChoiceLabel,
+                choice.id === selectedChoiceId ? styles.supportChoiceLabelActive : null,
+              ]}
+            >
+              {choice.label}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -189,8 +229,21 @@ export function SupportChatScreen() {
       </View>
 
       <View style={styles.supportInputShell}>
-        <Text style={styles.supportInputPlaceholder}>Write here...</Text>
-        <MaterialCommunityIcons color="#EA7C37" name="send-outline" size={18} />
+        <TextInput
+          onChangeText={setMessage}
+          placeholder="Write here..."
+          placeholderTextColor="#B69D8B"
+          style={styles.supportInput}
+          value={message}
+        />
+        <Pressable
+          accessibilityLabel="Send support message"
+          accessibilityRole="button"
+          onPress={handleSend}
+          style={styles.supportSendButton}
+        >
+          <MaterialCommunityIcons color="#EA7C37" name="send-outline" size={18} />
+        </Pressable>
       </View>
     </CravyoSheetScreen>
   );
@@ -290,7 +343,16 @@ function SearchField({
         style={styles.searchInput}
         value={value}
       />
-      <Pressable accessibilityRole="button" style={styles.searchFilterButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          showSupportNotice(
+            "Filters",
+            "Additional help filters are not available in this prototype yet.",
+          )
+        }
+        style={styles.searchFilterButton}
+      >
         <Feather color="#FFFFFF" name="sliders" size={16} />
       </Pressable>
     </View>
@@ -312,7 +374,7 @@ function FaqAccordionItem({
         <Text style={[styles.faqQuestion, expanded ? styles.faqQuestionExpanded : null]}>
           {item.question}
         </Text>
-        <Feather color="#D98B57" name="chevron-down" size={18} />
+        <Feather color="#D98B57" name={expanded ? "chevron-up" : "chevron-down"} size={18} />
       </Pressable>
 
       {expanded ? <Text style={styles.faqAnswer}>{item.answer}</Text> : null}
@@ -516,11 +578,19 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3,
   },
+  supportChoiceActive: {
+    borderWidth: 1,
+    borderColor: "#F0C69F",
+    backgroundColor: "#FFF1E2",
+  },
   supportChoiceLabel: {
     color: "#2C2422",
     fontSize: 15,
     lineHeight: 18,
     fontWeight: "700",
+  },
+  supportChoiceLabelActive: {
+    color: "#E27E39",
   },
   supportOrderCard: {
     marginTop: 22,
@@ -576,18 +646,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 12,
     borderRadius: 18,
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
-  supportInputPlaceholder: {
+  supportInput: {
     flex: 1,
-    color: "#B69D8B",
+    paddingVertical: 4,
+    color: "#4B403B",
     fontSize: 15,
     lineHeight: 18,
     fontWeight: "500",
+  },
+  supportSendButton: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 17,
+    backgroundColor: "#FFF1E2",
   },
 });

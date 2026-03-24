@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { CravyoSheetScreen } from "../../components/layout/CravyoSheetScreen";
 import { CravyoPillTabs } from "../../components/ui/CravyoPillTabs";
@@ -21,13 +21,18 @@ const orderGroups: Record<OrderStatusTabKey, OrderListItem[]> = {
 export function MyOrdersScreen() {
   const [activeTab, setActiveTab] = useState<OrderStatusTabKey>("active");
   const orders = orderGroups[activeTab];
+  const handleOrderAction = (order: OrderListItem, actionLabel: string) => {
+    Alert.alert(actionLabel, `${actionLabel} for ${order.title} is not wired to live data yet.`);
+  };
 
   return (
     <CravyoSheetScreen activeNavKey="orders" backHref="/(tabs)" title="My Orders">
       <CravyoPillTabs
         activeKey={activeTab}
+        fill={false}
         items={orderStatusTabs.map((tab) => ({ key: tab.id, label: tab.label }))}
         onChange={(key) => setActiveTab(key as OrderStatusTabKey)}
+        size="small"
         style={styles.tabs}
       />
 
@@ -47,13 +52,20 @@ export function MyOrdersScreen() {
               {order.primaryActionLabel || order.secondaryActionLabel ? (
                 <View style={styles.actionRow}>
                   {order.primaryActionLabel ? (
-                    <Pressable accessibilityRole="button" style={styles.primaryAction}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => handleOrderAction(order, order.primaryActionLabel!)}
+                      style={styles.primaryAction}
+                    >
                       <Text style={styles.primaryActionLabel}>{order.primaryActionLabel}</Text>
                     </Pressable>
                   ) : null}
 
                   {order.secondaryActionLabel ? (
-                    <Pressable accessibilityRole="button">
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => handleOrderAction(order, order.secondaryActionLabel!)}
+                    >
                       <Text style={styles.secondaryActionLabel}>
                         {order.secondaryActionLabel}
                       </Text>
@@ -76,7 +88,7 @@ export function MyOrdersScreen() {
 
 function OrderArtwork({ order }: { order: OrderListItem }) {
   if (order.image) {
-    return <Image source={order.image} style={styles.orderImage} />;
+    return <Image resizeMode="cover" source={order.image} style={styles.orderImage} />;
   }
 
   return (
@@ -118,6 +130,7 @@ function OrderStatusText({ order }: { order: OrderListItem }) {
 
 const styles = StyleSheet.create({
   tabs: {
+    alignSelf: "flex-start",
     marginBottom: 18,
   },
   list: {

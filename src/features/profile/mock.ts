@@ -109,19 +109,19 @@ export const paymentMethods: PaymentMethod[] = [
   },
   {
     id: "apple-pay",
-    label: "Apple Play",
+    label: "Apple Pay",
     iconName: "apple",
     isSelected: false,
   },
   {
     id: "paypal",
-    label: "Paypal",
+    label: "PayPal",
     iconName: "alpha-p-circle-outline",
     isSelected: false,
   },
   {
     id: "google-play",
-    label: "Google Play",
+    label: "Google Pay",
     iconName: "google-play",
     isSelected: false,
   },
